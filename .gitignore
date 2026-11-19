@@ -1,0 +1,19 @@
+# Pessoal: criado pelo /setup e mantido na rotina. Nunca versionar.
+config.json
+PERFIL.md
+ACOMPANHAMENTO.md
+
+# Dados de cada execução (snapshots, análises, fotos, logs, cookies de sessão)
+data/*
+!data/ref/
+
+# Relatórios gerados (o modelo em relatorios/modelos/ fica)
+relatorios/*.html
+
+# Screenshots e logs do Playwright
+.playwright-mcp/
+
+# Configurações locais do Claude Code
+.claude/settings.local.json
+
+__pycache__/

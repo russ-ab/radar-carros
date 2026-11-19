@@ -1,0 +1,283 @@
+<meta charset="utf-8">
+<title>Comparador de carros</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: faixa de números no topo, gráfico preço × km com painel de detalhe ao lado (empilha no celular), tabela ordenável embaixo */
+:root {
+  --bg: #f4f5f8; --surface: #ffffff; --ink: #121722; --muted: #5d6576; --grid: #e2e5ec; --accent: #2346d6; --accent-soft: #e5eaff;
+  --ok: #128a52; --warn: #b86e00; --bad: #c0303a; --band: #2346d60f;
+  --f-display: "Archivo", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1017; --surface: #151a24; --ink: #e6e9f0; --muted: #8b93a5; --grid: #252c3a; --accent: #8aa2ff; --accent-soft: #1d2645;
+  --ok: #4fd08f; --warn: #f2b14c; --bad: #ff7a83; --band: #8aa2ff14; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0d1017; --surface: #151a24; --ink: #e6e9f0; --muted: #8b93a5; --grid: #252c3a; --accent: #8aa2ff; --accent-soft: #1d2645;
+  --ok: #4fd08f; --warn: #f2b14c; --bad: #ff7a83; --band: #8aa2ff14; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.45 }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 18px }
+header { display: grid; gap: 4px }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; color: var(--muted); letter-spacing: .04em }
+h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(24px, 4.5vw, 34px); margin: 0; line-height: 1.1; text-wrap: balance }
+header p { margin: 0; color: var(--muted); max-width: 70ch }
+
+.numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--grid); border: 1px solid var(--grid); border-radius: 10px; overflow: hidden }
+.numeros div { background: var(--surface); padding: 12px 14px; display: grid; gap: 2px }
+.numeros b { font-family: var(--f-mono); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums }
+.numeros span { font-size: 12px; color: var(--muted) }
+
+.barra { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center }
+.seg { display: inline-flex; border: 1px solid var(--grid); border-radius: 8px; overflow: hidden; background: var(--surface) }
+.seg button { font: 500 13px var(--f-body); border: 0; background: transparent; color: var(--ink); padding: 6px 12px; cursor: pointer }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface) }
+label.chk { display: inline-flex; gap: 6px; align-items: center; cursor: pointer }
+button:focus-visible, input:focus-visible, th button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.legenda { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted) }
+.legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px }
+
+.painel { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; align-items: start }
+@media (max-width: 860px) { .painel { grid-template-columns: 1fr } }
+.grafico { background: var(--surface); border: 1px solid var(--grid); border-radius: 10px; padding: 10px; min-width: 0 }
+svg { display: block; width: 100%; height: auto }
+svg text { font-family: var(--f-mono); font-size: 11px; fill: var(--muted) }
+svg .linha-grade { stroke: var(--grid) }
+svg .teto { stroke: var(--accent); stroke-dasharray: 4 4 }
+svg .teto-rot { fill: var(--accent); font-size: 10.5px }
+svg .ponto { cursor: pointer; stroke: var(--surface); stroke-width: 2 }
+svg .ponto.sel { stroke: var(--ink); stroke-width: 3 }
+svg .letra { fill: var(--surface); font-family: var(--f-mono); font-weight: 500; font-size: 11px; pointer-events: none }
+
+.detalhe { background: var(--surface); border: 1px solid var(--grid); border-radius: 10px; padding: 16px; display: grid; gap: 10px; min-width: 0 }
+.detalhe h2 { font-family: var(--f-display); font-size: 20px; margin: 0 }
+.detalhe .sub { color: var(--muted); margin: 0 }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 }
+.kv dt { color: var(--muted) } .kv dd { margin: 0; font-family: var(--f-mono); text-align: right; font-variant-numeric: tabular-nums }
+.detalhe ul { margin: 0; padding-left: 18px; display: grid; gap: 3px }
+.detalhe h3 { margin: 6px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted) }
+.detalhe a { color: var(--accent); font-weight: 600 }
+.tag { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 4px; border: 1px solid currentColor; justify-self: start }
+.c-visitar { color: var(--ok) } .c-observar { color: var(--warn) } .c-descartar { color: var(--bad) } .c-sem-análise, .c-ignorado { color: var(--muted) }
+tr.apagado td { opacity: .45 } tr.apagado.sel td { opacity: .8 }
+g.apagado { opacity: .35 }
+
+.foto { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 8px; background: var(--grid); display: block; max-width: 100% }
+.miniaturas { display: flex; gap: 6px; overflow-x: auto }
+.miniaturas button { border: 2px solid transparent; padding: 0; border-radius: 6px; background: none; cursor: pointer; flex: none }
+.miniaturas button[aria-current="true"] { border-color: var(--accent) }
+.miniaturas img { width: 56px; height: 38px; object-fit: cover; border-radius: 4px; display: block }
+.nota { display: flex; align-items: center; gap: 12px }
+.nota b { font-family: var(--f-display); font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums }
+.nota span { color: var(--muted); font-size: 13px }
+.partes { display: grid; gap: 5px; margin: 0 }
+.partes .parte { position: relative; display: grid; grid-template-columns: 92px 1fr 44px; gap: 8px; align-items: center; font-size: 12px; padding: 2px 4px; margin: 0 -4px; border-radius: 6px; cursor: help }
+.partes .parte:hover, .partes .parte:focus { background: var(--accent-soft); outline: none }
+.dica { display: none; position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 4px); background: var(--surface); border: 1px solid var(--grid); border-radius: 8px; padding: 10px 12px; box-shadow: 0 8px 24px #0003; font-size: 12.5px; line-height: 1.4 }
+.parte:hover .dica, .parte:focus .dica { display: grid; gap: 4px }
+.dica strong { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted) }
+.dica ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px }
+.dica li { padding: 2px 6px; border-radius: 4px; color: var(--muted) }
+.dica li.aqui { background: var(--accent-soft); color: var(--ink); font-weight: 600 }
+.dica li.aqui::after { content: "  ← este carro"; color: var(--accent); font-weight: 500 }
+.dica .valor { color: var(--ink) }
+.partes dt { color: var(--muted) }
+.partes dd { margin: 0; font-family: var(--f-mono); text-align: right }
+.trilho { height: 6px; background: var(--grid); border-radius: 3px; overflow: hidden }
+.trilho i { display: block; height: 100%; background: var(--accent) }
+.ajuste { font-size: 13px; display: flex; gap: 8px }
+.ajuste b { font-family: var(--f-mono); min-width: 28px }
+.ajuste .mais { color: var(--ok) } .ajuste .menos { color: var(--bad) }
+td.thumb { padding: 4px 6px 4px 10px; width: 66px }
+td.thumb img { width: 56px; height: 38px; object-fit: cover; border-radius: 4px; display: block }
+td.score { font-family: var(--f-mono); font-weight: 500; font-size: 15px }
+.estrela { color: var(--accent); cursor: help }
+.tabela { background: var(--surface); border: 1px solid var(--grid); border-radius: 10px; overflow-x: auto }
+table { width: 100%; border-collapse: collapse; min-width: 900px }
+th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--grid); white-space: nowrap }
+td.num, th.num { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums }
+th button { font: 600 12px var(--f-body); color: var(--muted); background: none; border: 0; cursor: pointer; padding: 0; text-transform: uppercase; letter-spacing: .05em }
+th[aria-sort] button { color: var(--ink) }
+tbody tr { cursor: pointer }
+tbody tr:hover, tbody tr.sel { background: var(--accent-soft) }
+td .m { color: var(--muted) }
+.notas { display: grid; gap: 6px; color: var(--muted) }
+.notas ul { margin: 0; padding-left: 18px; display: grid; gap: 4px }
+.notas a { color: var(--accent) }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="manchete"></h1>
+    <p id="resumo"></p>
+  </header>
+
+  <div class="numeros" id="numeros"></div>
+
+  <div class="barra">
+    <div class="seg" role="group" aria-label="Prazo" id="prazos"></div>
+    <label class="chk"><input type="checkbox" id="esconder-desc"> Esconder descartados e ignorados</label>
+    <div class="legenda"><span><i style="background:var(--ok)"></i>Visitar</span><span><i style="background:var(--warn)"></i>Observar</span><span><i style="background:var(--bad)"></i>Descartar</span><span><i style="background:var(--muted)"></i>Ignorado (marca proibida ou versão/ano abaixo do aprovado)</span><span>Número no ponto = score de 0 a 100</span><span><b class="estrela">★</b> = destaque do dia (escolhido na análise, não pelo score)</span></div>
+  </div>
+
+  <div class="painel">
+    <div class="grafico"><svg id="svg" viewBox="0 0 720 420" role="img" aria-label="Preço por quilometragem de cada carro, com linhas de parcela"></svg></div>
+    <aside class="detalhe" id="detalhe" aria-live="polite"></aside>
+  </div>
+
+  <div class="tabela"><table><thead><tr id="cab"></tr></thead><tbody id="corpo"></tbody></table></div>
+
+  <section class="notas"><strong style="color:var(--ink)">Notas do dia</strong><ul id="notas"></ul><p id="rodape" style="margin:0"></p></section>
+</div>
+
+<script id="dados" type="application/json">__DADOS__</script>
+<script>
+const D = JSON.parse(document.getElementById('dados').textContent);
+const F = D.financiamento;  // null = compra à vista
+const ROTULO = { visitar: 'Visitar', observar: 'Observar', descartar: 'Descartar', 'sem análise': 'Sem análise', ignorado: 'Ignorado' };
+const COR = { visitar: 'var(--ok)', observar: 'var(--warn)', descartar: 'var(--bad)', 'sem análise': 'var(--muted)', ignorado: 'var(--muted)' };
+const fora = c => c.veredito === 'descartar' || c.veredito === 'ignorado';  // esmaecidos, fora do ranking
+const brl = n => 'R$ ' + Math.round(n).toLocaleString('pt-BR');
+const num = n => Math.round(n).toLocaleString('pt-BR');
+const dec = n => (Math.round(n * 10) / 10).toLocaleString('pt-BR');
+const mil = n => n >= 1000 ? `${dec(n / 1000)} mil` : num(n);
+const parcela = (preco, n) => { const s = preco - F.entrada + F.tarifas; return s <= 0 ? 0 : s * F.taxa_mes / (1 - Math.pow(1 + F.taxa_mes, -n)); };
+const precoPara = (p, n) => p * (1 - Math.pow(1 + F.taxa_mes, -n)) / F.taxa_mes + F.entrada - F.tarifas;
+const titulo = c => `${D.nomes[c.modelo] || c.nome || c.modelo} ${c.versao_curta || ''}`.trim();
+const anoModelo = c => +c.ano.split('/').pop();
+// Critérios do score. A régua (peso e curva) vem do config.json, a mesma que pontuar() usa em scripts/busca.py.
+const CRIT = {
+  parcela: { rotulo: F ? `Parcela ${F.prazo_ref}x` : 'Parcela', valor: c => parcela(c.preco, F.prazo_ref), fmt: brl, desc: v => `${brl(v)} em ${F.prazo_ref}x` },
+  preco: { rotulo: 'Preço', valor: c => c.preco, fmt: brl, desc: brl },
+  km: { rotulo: 'Km total', valor: c => c.km, fmt: v => `${mil(v)} km`, desc: v => `${num(v)} km` },
+  uso: { rotulo: 'Km por ano', valor: c => c.km_ano, fmt: v => `${mil(v)} por ano`, desc: v => `${num(v)} km por ano` },
+  fipe: { rotulo: '% da FIPE', valor: c => c.fipe_pct == null ? 100 : c.fipe_pct, fmt: v => `${v}%`, desc: v => `${v}% da FIPE` },
+  ano: { rotulo: 'Ano-modelo', valor: anoModelo, fmt: String, desc: v => `modelo ${v}` },
+};
+// Texto das faixas de um critério, gerado da curva [[valor, pontos], ...] (retas entre os pontos, extremos travados)
+function faixas(k) {
+  const cv = D.score[k].curva, f = CRIT[k].fmt, ult = cv[cv.length - 1];
+  const nota = (a, b) => a === b ? dec(a) : `${dec(a)} a ${dec(b)}`;
+  const out = [[v => v <= cv[0][0], `${f(cv[0][0])} ou menos = ${dec(cv[0][1])}`]];
+  for (let i = 0; i < cv.length - 1; i++) out.push([v => v <= cv[i + 1][0], `De ${f(cv[i][0])} a ${f(cv[i + 1][0])} = ${nota(cv[i][1], cv[i + 1][1])}`]);
+  out.push([() => true, `Acima de ${f(ult[0])} = ${dec(ult[1])}`]);
+  return out;
+}
+const PARTES = Object.entries(D.score).map(([k, r]) => [k, CRIT[k].rotulo, r.peso]);
+const passo = (amplitude, alvo) => [1000, 2000, 5000, 10000, 20000, 25000, 50000, 100000].find(p => amplitude / p <= alvo) || 200000;
+const destaque = id => D.destaques.find(d => d.id === id);
+
+const melhor = D.carros.filter(c => !fora(c)).sort((a, b) => b.score - a.score)[0] || D.carros[0];
+const est = { prazo: F ? F.prazo_ref : null, esconder: false, sel: melhor?.id, ord: 'score', asc: false, foto: 0 };
+const visiveis = () => D.carros.filter(c => !est.esconder || !fora(c));
+const notaTexto = c => c.veredito === 'ignorado' ? '—' : c.score;
+
+function numeros() {
+  const v = D.carros.filter(c => c.veredito === 'visitar').length;
+  const ideal = D.carros.filter(c => !fora(c) && (F ? parcela(c.preco, F.prazo_ref) <= F.parcela_ideal : c.preco <= D.preco_ideal)).length;
+  const ign = D.carros.filter(c => c.veredito === 'ignorado').length;
+  document.getElementById('numeros').innerHTML = [
+    [D.carros.length - ign, `candidatos (duplicados unidos)${ign ? ` + ${ign} ignorados` : ''}`], [v, 'para visitar'],
+    [ideal, F ? `com parcela até ${brl(F.parcela_ideal)} em ${F.prazo_ref}x` : `até ${brl(D.preco_ideal)}`], [melhor ? melhor.score : '—', 'maior score entre os não descartados']
+  ].map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join('');
+}
+
+function grafico() {
+  const W = 720, H = 420, m = { l: 62, r: 16, t: 16, b: 44 };
+  const cs = visiveis();
+  const precos = D.carros.map(c => c.preco), pp = passo(Math.max(...precos) - Math.min(...precos), 10);
+  const pmin = Math.floor((Math.min(...precos) - pp) / pp) * pp;
+  const pmax = Math.ceil((Math.max(...precos) + pp * 0.75) / pp) * pp;
+  const kp = passo(D.km_max, 6);
+  const x = k => m.l + k / D.km_max * (W - m.l - m.r);
+  const y = p => H - m.b - (p - pmin) / (pmax - pmin) * (H - m.t - m.b);
+  let s = '';
+  for (let k = 0; k <= D.km_max; k += kp) s += `<line class="linha-grade" x1="${x(k)}" x2="${x(k)}" y1="${m.t}" y2="${H - m.b}"/><text x="${x(k)}" y="${H - m.b + 16}" text-anchor="middle">${mil(k)}</text>`;
+  for (let p = pmin; p <= pmax; p += pp) s += `<line class="linha-grade" x1="${m.l}" x2="${W - m.r}" y1="${y(p)}" y2="${y(p)}"/><text x="${m.l - 8}" y="${y(p) + 4}" text-anchor="end">${mil(p)}</text>`;
+  s += `<text x="${(W + m.l) / 2}" y="${H - 6}" text-anchor="middle">quilometragem</text>`;
+  const tetos = F ? [F.parcela_ideal, F.parcela_limite].map(v => [precoPara(v, est.prazo), `parcela ${brl(v)} em ${est.prazo}x`])
+                  : (D.preco_ideal ? [[D.preco_ideal, `preço ideal ${brl(D.preco_ideal)}`]] : []);
+  tetos.forEach(([pr, rot]) => {
+    if (pr > pmin && pr < pmax) s += `<line class="teto" x1="${m.l}" x2="${W - m.r}" y1="${y(pr)}" y2="${y(pr)}"/><text class="teto-rot" x="${W - m.r - 4}" y="${y(pr) - 5}" text-anchor="end">${rot}</text>`;
+  });
+  cs.slice().sort((a, b) => (a.id === est.sel) - (b.id === est.sel)).forEach(c => {
+    s += `<g data-id="${c.id}" class="${fora(c) && c.id !== est.sel ? 'apagado' : ''}"><circle class="ponto${c.id === est.sel ? ' sel' : ''}" cx="${x(c.km)}" cy="${y(c.preco)}" r="13" fill="${COR[c.veredito]}"><title>${titulo(c)} ${c.ano} · ${c.veredito === 'ignorado' ? 'ignorado' : 'score ' + c.score} · ${num(c.km)} km · ${brl(c.preco)}</title></circle><text class="letra" x="${x(c.km)}" y="${y(c.preco) + 3.5}" text-anchor="middle">${notaTexto(c)}</text></g>`;
+  });
+  const svg = document.getElementById('svg');
+  svg.innerHTML = s;
+  svg.querySelectorAll('g[data-id]').forEach(g => g.addEventListener('click', () => selecionar(+g.dataset.id)));
+}
+
+function detalhe() {
+  const c = D.carros.find(c => c.id === est.sel);
+  const el = document.getElementById('detalhe');
+  if (!c) { el.innerHTML = '<p class="sub">Toque num ponto do gráfico ou numa linha da tabela para ver os detalhes.</p>'; return; }
+  const d = destaque(c.id);
+  const lst = a => '<ul>' + a.map(i => `<li>${i}</li>`).join('') + '</ul>';
+  const dica = (k, pts, max) => {
+    const fx = faixas(k), v = CRIT[k].valor(c), ativa = fx.findIndex(([teste]) => teste(v));
+    return `<span class="dica" role="tooltip" id="dica-${k}"><strong>Como pontua</strong><ol>${fx.map(([, t], i) => `<li class="${i === ativa ? 'aqui' : ''}">${t}</li>`).join('')}</ol><span class="valor">Este carro: ${CRIT[k].desc(v)} → ${Math.round(pts)} de ${max} pontos</span></span>`;
+  };
+  const fotoAtual = c.fotos[Math.min(est.foto, c.fotos.length - 1)];
+  el.innerHTML = `${fotoAtual ? `<img class="foto" src="${fotoAtual}" alt="Foto ${est.foto + 1} do ${titulo(c)}">` : ''}
+    ${c.fotos.length > 1 ? `<div class="miniaturas">${c.fotos.map((f, i) => `<button type="button" data-foto="${i}" aria-current="${i === est.foto}" aria-label="Foto ${i + 1}"><img src="${f}" alt=""></button>`).join('')}</div>` : ''}
+    <span class="tag c-${c.veredito.replace(' ', '-')}">${ROTULO[c.veredito]}${d ? ' · destaque' : ''}</span>
+    <h2>${titulo(c)} ${c.ano}</h2><p class="sub">${c.cidade} · ${c.loja || 'loja sem nome'}${c.locadora ? ' · ex-locadora' : ''}</p>
+    <dl class="kv">
+      <dt>Preço</dt><dd>${brl(c.preco)}</dd><dt>FIPE</dt><dd>${c.fipe_pct}%</dd>
+      ${F ? F.prazos.map(n => `<dt>Parcela ${n}x</dt><dd>${brl(parcela(c.preco, n))}</dd>`).join('') : ''}
+      <dt>Km</dt><dd>${num(c.km)}</dd><dt>Km por ano</dt><dd>${num(c.km_ano)}</dd>
+    </dl>
+    ${c.veredito === 'ignorado' ? '' : `<div class="nota"><b>${c.score}</b><span>score de 0 a 100<br>base ${c.score_base}${c.ajustes.length ? ' + ajustes da análise' : ''}</span></div>
+    <dl class="partes">${PARTES.map(([k, t, max]) => `<div class="parte" tabindex="0" aria-describedby="dica-${k}"><dt>${t}</dt><span class="trilho"><i style="width:${(c.score_partes[k] / max) * 100}%"></i></span><dd>${Math.round(c.score_partes[k])}/${max}</dd>${dica(k, c.score_partes[k], max)}</div>`).join('')}</dl>`}
+    ${c.ajustes.map(j => `<div class="ajuste"><b class="${j.pontos > 0 ? 'mais' : 'menos'}">${j.pontos > 0 ? '+' : ''}${j.pontos}</b><span>${j.motivo}</span></div>`).join('')}
+    ${c.motivo ? `<p style="margin:0">${c.motivo}</p>` : ''}
+    ${d ? `<h3>A favor</h3>${lst(d.pros)}<h3>Contra</h3>${lst(d.contras)}<h3>Pedir na loja</h3>${lst(d.pedir)}` : ''}
+    ${c.tambem_em.length ? `<p class="sub">Também anunciado em ${c.tambem_em.map(t => `<a href="${t.link}" target="_blank" rel="noopener">${t.cidade}</a>`).join(' e ')}.</p>` : ''}
+    <a href="${c.link}" target="_blank" rel="noopener">Ver anúncio ↗</a>`;
+  el.querySelectorAll('[data-foto]').forEach(b => b.addEventListener('click', () => { est.foto = +b.dataset.foto; detalhe(); }));
+}
+
+const COLS = [
+  ['score', 'Score', c => c.veredito === 'ignorado' ? -1 : c.score, true],
+  ['carro', 'Carro', c => titulo(c), false], ['ano', 'Ano', c => c.ano, false], ['km', 'Km', c => c.km, true],
+  ['km_ano', 'Km/ano', c => c.km_ano, true], ['preco', 'Preço', c => c.preco, true], ['fipe_pct', 'FIPE', c => c.fipe_pct, true],
+  ...(F ? [['parcela', 'Parcela', c => parcela(c.preco, est.prazo), true]] : []), ['veredito', 'Veredito', c => ['visitar', 'observar', 'sem análise', 'descartar', 'ignorado'].indexOf(c.veredito), false],
+  ['cidade', 'Cidade', c => c.cidade, false]
+];
+
+function tabela() {
+  document.getElementById('cab').innerHTML = '<th aria-label="Foto"></th>' + COLS.map(([k, t, , n]) => `<th class="${n ? 'num' : ''}" ${est.ord === k ? `aria-sort="${est.asc ? 'ascending' : 'descending'}"` : ''}><button type="button" data-k="${k}">${t}${est.ord === k ? (est.asc ? ' ↑' : ' ↓') : ''}</button></th>`).join('');
+  const f = COLS.find(c => c[0] === est.ord)[2];
+  // descartados e ignorados sempre no fim, qualquer que seja a ordenação
+  const linhas = visiveis().slice().sort((a, b) => (fora(a) - fora(b)) || (() => { const va = f(a), vb = f(b); return (va > vb ? 1 : va < vb ? -1 : 0) * (est.asc ? 1 : -1); })());
+  document.getElementById('corpo').innerHTML = linhas.map(c => `<tr data-id="${c.id}" class="${[c.id === est.sel ? 'sel' : '', fora(c) ? 'apagado' : ''].join(' ').trim()}">
+    <td class="thumb">${c.fotos[0] ? `<img src="${c.fotos[0]}" alt="" loading="lazy">` : ''}</td><td class="num score">${notaTexto(c)}</td>
+    <td>${titulo(c)}${destaque(c.id) ? ' <span class="estrela" title="Destaque do dia: um dos melhores carros escolhidos na análise">★</span>' : ''}</td><td>${c.ano}</td><td class="num">${num(c.km)}</td><td class="num">${num(c.km_ano)}</td>
+    <td class="num">${brl(c.preco)}</td><td class="num">${c.fipe_pct}%</td>${F ? `<td class="num">${brl(parcela(c.preco, est.prazo))}</td>` : ''}
+    <td class="c-${c.veredito.replace(' ', '-')}">${ROTULO[c.veredito]}</td><td>${c.cidade} <span class="m">${c.tambem_em.length ? '+' + c.tambem_em.length : ''}</span></td></tr>`).join('');
+  document.querySelectorAll('#cab button').forEach(b => b.addEventListener('click', () => { est.asc = est.ord === b.dataset.k ? !est.asc : true; est.ord = b.dataset.k; tabela(); }));
+  document.querySelectorAll('#corpo tr').forEach(tr => tr.addEventListener('click', () => selecionar(+tr.dataset.id)));
+}
+
+function selecionar(id) { est.sel = id; est.foto = 0; grafico(); detalhe(); tabela(); }
+function tudo() { grafico(); detalhe(); tabela(); document.querySelectorAll('[data-prazo]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.prazo === est.prazo)); }
+
+const prazos = document.getElementById('prazos');
+if (F) prazos.innerHTML = F.prazos.slice().sort((a, b) => b - a).map(n => `<button type="button" data-prazo="${n}">${n}x</button>`).join('');
+else prazos.hidden = true;
+document.querySelectorAll('[data-prazo]').forEach(b => b.addEventListener('click', () => { est.prazo = +b.dataset.prazo; tudo(); }));
+document.getElementById('esconder-desc').addEventListener('change', e => { est.esconder = e.target.checked; tudo(); });
+document.getElementById('eyebrow').textContent = `${D.local.cidade.toUpperCase()} + ${D.local.raio_km} KM · ${new Date(D.data + 'T12:00:00').toLocaleDateString('pt-BR')}`;
+document.getElementById('manchete').textContent = D.manchete || 'Comparador do dia';
+document.getElementById('resumo').textContent = D.resumo;
+document.getElementById('notas').innerHTML = [...D.achados.map(a => a.texto + (a.fonte ? ` <a href="${a.fonte}" target="_blank" rel="noopener">fonte</a>` : '')), ...D.mercado].map(t => `<li>${t}</li>`).join('');
+document.getElementById('rodape').textContent = `${F ? `Entrada de ${brl(F.entrada)}, ${brl(F.tarifas)} de tarifas no financiado, ${(F.taxa_mes * 100).toFixed(2).replace('.', ',')}% ao mês.` : 'Compra à vista.'} Busca de ${new Date(D.gerado_em).toLocaleString('pt-BR')}.`;
+numeros();
+tudo();
+</script>

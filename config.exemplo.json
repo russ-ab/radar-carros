@@ -1,0 +1,34 @@
+{
+  "versao": 1,
+  "local": {
+    "cidade": "Campinas",
+    "uf": "SP",
+    "lat": -22.9053,
+    "lng": -47.0659,
+    "raio_km": 50
+  },
+  "busca": {
+    "preco_max": 100000,
+    "km_max": 50000,
+    "cambio": "automatico",
+    "vendedores": ["Concessionária", "Loja"],
+    "geral": { "carroceria": "Utilitário esportivo", "ano_min": 2021 },
+    "marcas_proibidas": ["RENAULT"],
+    "modelos_recusados": ["RENEGADE"]
+  },
+  "alvos": {
+    "kicks": { "nome": "Nissan Kicks", "marca": "NISSAN", "modelo": "KICKS", "ano_min": 2022, "excluir": ["ACTIVE", "SENSE"] },
+    "tracker": { "nome": "Chevrolet Tracker", "marca": "CHEVROLET", "modelo": "TRACKER", "ano_min": 2021, "exigir": ["LT", "LTZ", "PREMIER", "RS"] },
+    "creta": { "nome": "Hyundai Creta", "marca": "HYUNDAI", "modelo": "CRETA", "ano_min": 2021, "excluir": ["ATTITUDE"] }
+  },
+  "financiamento": {
+    "banco": "Banco de exemplo",
+    "entrada": 50000,
+    "taxa_mes": 0.0166,
+    "tarifas": 2800,
+    "prazos": [36, 48],
+    "parcela_ideal": 1300,
+    "parcela_limite": 1500
+  },
+  "relatorio": { "artifact_url": null }
+}

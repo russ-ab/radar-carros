@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -I scripts/config.py:*)",
+      "Bash(python3 -I scripts/busca.py:*)",
+      "Bash(caffeinate -i python3 -I scripts/busca.py:*)",
+      "Bash(python3 -I scripts/relatorio_html.py:*)",
+      "Bash(python3 -I scripts/sondar.py:*)",
+      "Bash(python3 -m unittest discover -s tests:*)",
+      "Bash(python3 --version)"
+    ]
+  }
+}
